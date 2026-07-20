@@ -1,7 +1,10 @@
 package com.magictablet
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -20,7 +23,7 @@ import com.magictablet.screens.StackScreen
 fun App() {
     var screen by remember { mutableStateOf(Screen.Game) }
     Surface(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             TabRow(selectedTabIndex = screen.ordinal) {
                 Screen.entries.forEach { entry ->
                     Tab(
