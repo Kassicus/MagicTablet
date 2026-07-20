@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -37,11 +38,14 @@ fun PlayerPanel(
     player: PlayerState,
     opponents: List<PlayerState>,
     recentDelta: RecentDelta?,
+    isActive: Boolean,
+    isMonarch: Boolean,
     onAdjustLife: (playerId: Int, delta: Int) -> Unit,
     onClearDelta: (playerId: Int) -> Unit,
     onAdjustPoison: (playerId: Int, delta: Int) -> Unit,
     onAdjustCommanderDamage: (playerId: Int, fromOpponentId: Int, delta: Int) -> Unit,
     onAdjustCounter: (playerId: Int, counter: String, delta: Int) -> Unit,
+    onToggleMonarch: (playerId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = SeatColors[player.colorIndex % SeatColors.size]
@@ -58,7 +62,11 @@ fun PlayerPanel(
     Box(
         modifier = modifier
             .padding(4.dp)
-            .border(2.dp, accent, RoundedCornerShape(12.dp)),
+            .border(
+                width = if (isActive) 4.dp else 2.dp,
+                color = if (isActive) accent else accent.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
+            ),
     ) {
         if (expanded) {
             PlayerDrawer(
@@ -70,13 +78,11 @@ fun PlayerPanel(
                 onCollapse = { expanded = false },
             )
         } else {
-            // Tap zones stay active even when lost (life can recover).
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxHeight().holdRepeatClick { onAdjustLife(player.id, -1) })
                 Box(Modifier.weight(1f).fillMaxHeight().holdRepeatClick { onAdjustLife(player.id, 1) })
             }
 
-            // Life number, dimmed when lost.
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = player.life.toString(),
@@ -87,7 +93,6 @@ fun PlayerPanel(
                 )
             }
 
-            // Recent delta.
             Box(Modifier.fillMaxSize().padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
                 AnimatedVisibility(
                     visible = recentDelta != null && recentDelta.amount != 0,
@@ -104,7 +109,6 @@ fun PlayerPanel(
                 }
             }
 
-            // Loss overlay: skull + reason.
             if (lost) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Row(
@@ -118,7 +122,6 @@ fun PlayerPanel(
                 }
             }
 
-            // Collapsed badges.
             val hasCmd = player.commanderDamage.values.any { it > 0 }
             if (player.poison > 0 || hasCmd) {
                 Row(
@@ -128,6 +131,15 @@ fun PlayerPanel(
                     if (player.poison > 0) Text("☠${player.poison}", fontSize = 14.sp, color = accent)
                     if (hasCmd) Text("CMD", fontSize = 14.sp, color = accent)
                 }
+            }
+
+            // Monarch marker (top-end). Clickable — safe from life-zone click-through (HoldRepeat uses
+            // default requireUnconsumed = true). Bright when monarch, faint otherwise.
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(6.dp)
+                    .clickable { onToggleMonarch(player.id) },
+            ) {
+                Text("👑", fontSize = 20.sp, modifier = Modifier.alpha(if (isMonarch) 1f else 0.3f))
             }
 
             TextButton(onClick = { expanded = true }, modifier = Modifier.align(Alignment.BottomCenter)) {

@@ -15,11 +15,14 @@ import com.magictablet.game.seatSplit
 fun SeatLayout(
     players: List<PlayerState>,
     recentDeltas: Map<Int, RecentDelta>,
+    activePlayerId: Int?,
+    monarchPlayerId: Int?,
     onAdjustLife: (playerId: Int, delta: Int) -> Unit,
     onClearDelta: (playerId: Int) -> Unit,
     onAdjustPoison: (playerId: Int, delta: Int) -> Unit,
     onAdjustCommanderDamage: (playerId: Int, fromOpponentId: Int, delta: Int) -> Unit,
     onAdjustCounter: (playerId: Int, counter: String, delta: Int) -> Unit,
+    onToggleMonarch: (playerId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (topCount, _) = seatSplit(players.size)
@@ -32,11 +35,14 @@ fun SeatLayout(
             player = p,
             opponents = players.filter { it.id != p.id },
             recentDelta = recentDeltas[p.id],
+            isActive = p.id == activePlayerId,
+            isMonarch = p.id == monarchPlayerId,
             onAdjustLife = onAdjustLife,
             onClearDelta = onClearDelta,
             onAdjustPoison = onAdjustPoison,
             onAdjustCommanderDamage = onAdjustCommanderDamage,
             onAdjustCounter = onAdjustCounter,
+            onToggleMonarch = onToggleMonarch,
             modifier = mod,
         )
     }

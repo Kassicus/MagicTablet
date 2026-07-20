@@ -35,17 +35,28 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
         SeatLayout(
             players = state.players,
             recentDeltas = recentDeltas,
+            activePlayerId = state.activePlayerId,
+            monarchPlayerId = state.monarchPlayerId,
             onAdjustLife = viewModel::adjustLife,
             onClearDelta = viewModel::clearRecentDelta,
             onAdjustPoison = viewModel::adjustPoison,
             onAdjustCommanderDamage = viewModel::adjustCommanderDamage,
             onAdjustCounter = viewModel::adjustCounter,
+            onToggleMonarch = viewModel::toggleMonarch,
             modifier = Modifier.fillMaxSize(),
         )
 
         Box(Modifier.align(Alignment.Center)) {
             FilledTonalButton(onClick = { menuOpen = true }) { Text("⚙") }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text("Advance turn") },
+                    onClick = { menuOpen = false; viewModel.advanceTurn() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Random first player") },
+                    onClick = { menuOpen = false; viewModel.randomFirstPlayer() },
+                )
                 DropdownMenuItem(
                     text = { Text("New game") },
                     onClick = { menuOpen = false; showNewGame = true },
