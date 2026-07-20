@@ -114,7 +114,7 @@ Goal: turn Scryfall bulk exports into a trimmed SQLite file bundled in `assets/`
 
 1. Fetch two Scryfall bulk exports: **Oracle Cards** (one entry per unique card — current name, mana cost, type line, oracle text, keywords) and **Rulings** (joined to cards via `oracle_id`). These are `jsonl.gz`; stream them.
 2. Trim to only the fields in §4. **Drop card images and price fields** (prices go stale within a day and aren't needed).
-3. Write into SQLite: a `Card` table, a `Ruling` table, and an **FTS5 virtual table** over `name` + `oracle_text` for search. Query it from Room via a raw `MATCH` query / dedicated DAO.
+3. Write into SQLite: a `Card` table, a `Ruling` table, and an **FTS4 virtual table** over `name` + `oracle_text` for search. Query it via a raw `MATCH` query / dedicated DAO. **Note (2026-07-20):** originally specced as FTS5, but the target tablet's framework SQLite (3.44.3) ships FTS3/FTS4 but **not** FTS5 (verified on-device). Using FTS4 keeps us on the stock SQLite with no bundled native SQLite; ranking (FTS5's `bm25`) is done in the query/app layer instead.
 4. Bundle the resulting `.db` in `assets/` and open with Room `createFromAsset`. Size is a small fraction of the 64GB storage once images/prices are excluded.
 5. **Refresh cadence:** gameplay text changes rarely, so a weekly or post-set-release rebuild is plenty. **Decision (2026-07-20):** this build script produces the **seed `cards.db` shipped in `assets/`** (so the app works offline on install); refresh is via **in-app WiFi sync** — the tablet itself downloads the Scryfall bulk exports and rebuilds the FTS DB into internal storage (a Kotlin port of this script's parse/filter/FTS logic). The app reads the newer internal-storage DB in preference to the bundled seed.
 

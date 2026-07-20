@@ -128,9 +128,12 @@ def _create_schema(conn: sqlite3.Connection) -> None:
           text        TEXT
         );
         CREATE INDEX idx_ruling_oracleId ON Ruling(oracleId);
-        CREATE VIRTUAL TABLE CardFts USING fts5(
-          name, oracleText, oracleId UNINDEXED,
-          tokenize = 'unicode61 remove_diacritics 2'
+        -- FTS4 (not FTS5): the target tablet's framework SQLite (3.44.3) ships
+        -- FTS3/FTS4 but NOT FTS5, and the app uses that framework SQLite. FTS4's
+        -- `notindexed=` is the equivalent of FTS5's UNINDEXED.
+        CREATE VIRTUAL TABLE CardFts USING fts4(
+          name, oracleText, oracleId, notindexed=oracleId,
+          tokenize=unicode61 "remove_diacritics=2"
         );
         """
     )
