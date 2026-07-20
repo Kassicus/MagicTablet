@@ -34,6 +34,13 @@ fun parseCr(lines: Sequence<String>): CrCorpus {
     val glossary = ArrayList<GlossaryRow>()
     var mode = 0 // 0 rules, 1 glossary, 2 done
     var current: String? = null
+    // The real CR opens with a table of contents whose entries include the
+    // integer section headers (1., 100., ...) plus the words "Glossary" and
+    // "Credits". The contents never lists a sub-rule (a number containing '.'),
+    // so we only honor the Glossary/Credits section switches once a real
+    // sub-rule has been seen — otherwise the contents' "Glossary"/"Credits"
+    // lines would end parsing after only the table of contents.
+    var sawSubrule = false
     val block = ArrayList<String>()
 
     fun flushGlossary() {
@@ -48,15 +55,15 @@ fun parseCr(lines: Sequence<String>): CrCorpus {
         val line = raw.trimEnd()
         if (mode == 2) break
         if (mode == 0) {
-            when (line.trim()) {
-                "Glossary" -> { mode = 1; current = null; continue }
-                "Credits" -> { mode = 2; continue }
-            }
+            val marker = line.trim()
+            if (marker == "Glossary") { if (sawSubrule) { mode = 1; current = null }; continue }
+            if (marker == "Credits") { if (sawSubrule) mode = 2; continue }
             val m = RULE_LINE.matchEntire(line)
             if (m != null) {
                 val number = m.groupValues[1]
                 rules[number] = RuleRow(number, ruleSortKey(number), ruleParent(number), m.groupValues[2].trim())
                 current = number
+                if ('.' in number) sawSubrule = true
             } else if (line.isNotBlank() && current != null) {
                 val e = rules.getValue(current!!)
                 rules[current!!] = e.copy(text = e.text + "\n" + line.trim())
