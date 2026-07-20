@@ -22,11 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.magictablet.game.PlayerState
 import com.magictablet.game.RecentDelta
+import com.magictablet.game.isLost
+import com.magictablet.game.lossReason
 import com.magictablet.ui.theme.SeatColors
 
 @Composable
@@ -43,6 +46,7 @@ fun PlayerPanel(
 ) {
     val accent = SeatColors[player.colorIndex % SeatColors.size]
     var expanded by remember { mutableStateOf(false) }
+    val lost = player.isLost()
 
     LaunchedEffect(recentDelta?.token) {
         if (recentDelta != null) {
@@ -66,23 +70,24 @@ fun PlayerPanel(
                 onCollapse = { expanded = false },
             )
         } else {
-            // Tap zones (bottom layer).
+            // Tap zones stay active even when lost (life can recover).
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxHeight().holdRepeatClick { onAdjustLife(player.id, -1) })
                 Box(Modifier.weight(1f).fillMaxHeight().holdRepeatClick { onAdjustLife(player.id, 1) })
             }
 
-            // Life number.
+            // Life number, dimmed when lost.
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = player.life.toString(),
                     fontSize = 72.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.alpha(if (lost) 0.4f else 1f),
                 )
             }
 
-            // Recent delta (top-center), fades on clear.
+            // Recent delta.
             Box(Modifier.fillMaxSize().padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
                 AnimatedVisibility(
                     visible = recentDelta != null && recentDelta.amount != 0,
@@ -99,7 +104,21 @@ fun PlayerPanel(
                 }
             }
 
-            // Collapsed badges (top-start): poison / commander damage.
+            // Loss overlay: skull + reason.
+            if (lost) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Row(
+                        Modifier.padding(top = 90.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("☠", fontSize = 28.sp, color = accent)
+                        Text(player.lossReason() ?: "", fontSize = 16.sp, color = accent)
+                    }
+                }
+            }
+
+            // Collapsed badges.
             val hasCmd = player.commanderDamage.values.any { it > 0 }
             if (player.poison > 0 || hasCmd) {
                 Row(
@@ -111,7 +130,6 @@ fun PlayerPanel(
                 }
             }
 
-            // Chevron to open the drawer (bottom-center); consumes its own tap area.
             TextButton(onClick = { expanded = true }, modifier = Modifier.align(Alignment.BottomCenter)) {
                 Text("▴ counters", fontSize = 13.sp, color = accent)
             }
