@@ -36,6 +36,10 @@ class CrViewModel(app: Application) : AndroidViewModel(app) {
     private val _syncState = MutableStateFlow<CrSyncUiState>(CrSyncUiState.Idle)
     val syncState: StateFlow<CrSyncUiState> = _syncState.asStateFlow()
 
+    /** Last glossary lookup: term to definition-or-null (null overall = nothing looked up yet). */
+    private val _glossary = MutableStateFlow<Pair<String, String?>?>(null)
+    val glossary: StateFlow<Pair<String, String?>?> = _glossary.asStateFlow()
+
     private val backStack = ArrayDeque<String?>()
 
     init {
@@ -54,6 +58,7 @@ class CrViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun open() = go(null, clearBack = true)
+    /** Focuses the VM's view on [number]; does NOT control modal visibility (M4b's host must supply that). */
     fun openAt(number: String) = go(number, clearBack = true)
     fun jumpTo(number: String) = go(number.trim(), clearBack = true)
 
@@ -98,6 +103,14 @@ class CrViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dismissSync() { _syncState.value = CrSyncUiState.Idle }
+
+    fun lookupGlossary(term: String) {
+        val t = term.trim()
+        if (t.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) { _glossary.value = t to db.glossary(t) }
+    }
+
+    fun clearGlossary() { _glossary.value = null }
 
     companion object {
         private const val KEY_URL = "cr_url"

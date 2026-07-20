@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +37,7 @@ fun CrReader(viewModel: CrViewModel, onClose: () -> Unit) {
     val view by viewModel.view.collectAsStateWithLifecycle()
     val url by viewModel.url.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val glossary by viewModel.glossary.collectAsStateWithLifecycle()
 
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize().padding(16.dp)) {
@@ -51,7 +53,7 @@ fun CrReader(viewModel: CrViewModel, onClose: () -> Unit) {
                     !hasRules ->
                         LoadPrompt(url, viewModel::setUrl, viewModel::startUpdate)
                     else ->
-                        BrowsePanel(view, viewModel::drillTo, viewModel::up, viewModel::jumpTo, viewModel::startUpdate)
+                        BrowsePanel(view, glossary, viewModel::drillTo, viewModel::up, viewModel::jumpTo, viewModel::lookupGlossary, viewModel::clearGlossary, viewModel::startUpdate)
                 }
             }
         }
@@ -99,14 +101,43 @@ private fun UpdatePanel(state: CrSyncUiState, url: String, onUrl: (String) -> Un
 }
 
 @Composable
-private fun BrowsePanel(view: CrView, onDrill: (String) -> Unit, onUp: () -> Unit, onJump: (String) -> Unit, onUpdate: () -> Unit) {
+private fun BrowsePanel(
+    view: CrView,
+    glossary: Pair<String, String?>?,
+    onDrill: (String) -> Unit,
+    onUp: () -> Unit,
+    onJump: (String) -> Unit,
+    onGlossary: (String) -> Unit,
+    onClearGlossary: () -> Unit,
+    onUpdate: () -> Unit,
+) {
     var jump by remember { mutableStateOf("") }
+    var term by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onUp) { Text("‹ Up") }
             OutlinedTextField(value = jump, onValueChange = { jump = it }, placeholder = { Text("Jump to rule #") }, singleLine = true, modifier = Modifier.weight(1f))
             TextButton(onClick = { if (jump.isNotBlank()) onJump(jump) }) { Text("Go") }
             TextButton(onClick = onUpdate) { Text("Update") }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(value = term, onValueChange = { term = it }, placeholder = { Text("Glossary term") }, singleLine = true, modifier = Modifier.weight(1f))
+            TextButton(onClick = { if (term.isNotBlank()) onGlossary(term) }) { Text("Define") }
+        }
+        if (glossary != null) {
+            val (t, def) = glossary
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(t, style = MaterialTheme.typography.titleSmall)
+                        TextButton(onClick = onClearGlossary) { Text("Dismiss") }
+                    }
+                    Text(
+                        def ?: "No glossary entry for '$t'",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         val current = view.current
