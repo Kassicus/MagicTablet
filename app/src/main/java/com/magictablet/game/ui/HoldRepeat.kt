@@ -23,7 +23,10 @@ fun Modifier.holdRepeatClick(onClick: () -> Unit): Modifier = composed {
     pointerInput(Unit) {
         coroutineScope {
             awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
+                // requireUnconsumed = true (default): if an overlaid clickable control
+                // (the ⚙ hub or the "▴ counters" chevron) already consumed this down,
+                // the tap zone ignores it instead of also nudging life by ±1.
+                awaitFirstDown()
                 current.value()
                 val job = this@coroutineScope.launch {
                     delay(INITIAL_DELAY_MS)
