@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,6 +32,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.magictablet.cards.CardDetail
 import com.magictablet.cards.CardSummary
 import com.magictablet.cards.CardsViewModel
+import com.magictablet.cards.SyncProgress
+import com.magictablet.cards.SyncUiState
 
 @Composable
 fun CardsScreen(viewModel: CardsViewModel = viewModel()) {
@@ -37,22 +42,30 @@ fun CardsScreen(viewModel: CardsViewModel = viewModel()) {
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val ready by viewModel.ready.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
 
     BackHandler(enabled = selected != null) { viewModel.closeDetail() }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = viewModel::onQueryChange,
-            placeholder = { Text("Search cards") },
-            singleLine = true,
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.onQueryChange("") }) { Text("Clear") }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = viewModel::onQueryChange,
+                placeholder = { Text("Search cards") },
+                singleLine = true,
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        TextButton(onClick = { viewModel.onQueryChange("") }) { Text("Clear") }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            TextButton(
+                onClick = { viewModel.startSync() },
+                enabled = syncState !is SyncUiState.Running,
+            ) { Text("↻ Update") }
+        }
         Spacer(Modifier.height(8.dp))
 
         val detail = selected
@@ -63,6 +76,52 @@ fun CardsScreen(viewModel: CardsViewModel = viewModel()) {
             else -> ResultsList(results, viewModel::openCard)
         }
     }
+
+    if (syncState !is SyncUiState.Idle) {
+        SyncDialog(syncState, onDismiss = viewModel::dismissSync)
+    }
+}
+
+@Composable
+private fun SyncDialog(state: SyncUiState, onDismiss: () -> Unit) {
+    val done = state is SyncUiState.Done || state is SyncUiState.Error
+    AlertDialog(
+        onDismissRequest = { if (done) onDismiss() },
+        title = { Text("Update card data") },
+        text = {
+            Column {
+                when (state) {
+                    is SyncUiState.Running -> when (val p = state.progress) {
+                        is SyncProgress.Connecting -> Text("Connecting…")
+                        is SyncProgress.Downloading -> {
+                            Text("Downloading ${p.which}…")
+                            Spacer(Modifier.height(8.dp))
+                            if (p.total > 0) {
+                                LinearProgressIndicator(
+                                    progress = { (p.bytes.toFloat() / p.total).coerceIn(0f, 1f) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                LinearProgressIndicator(Modifier.fillMaxWidth())
+                            }
+                        }
+                        is SyncProgress.Building -> {
+                            Text("Building… ${p.cards} cards")
+                            Spacer(Modifier.height(8.dp))
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                        }
+                        is SyncProgress.Finalizing -> Text("Finalizing…")
+                    }
+                    is SyncUiState.Done -> Text("Updated: ${state.cards} cards, ${state.rulings} rulings.")
+                    is SyncUiState.Error -> Text("Update failed: ${state.message}")
+                    is SyncUiState.Idle -> {}
+                }
+            }
+        },
+        confirmButton = {
+            if (done) TextButton(onClick = onDismiss) { Text("Close") }
+        },
+    )
 }
 
 @Composable

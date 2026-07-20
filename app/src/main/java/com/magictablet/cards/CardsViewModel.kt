@@ -22,9 +22,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+sealed interface SyncUiState {
+    data object Idle : SyncUiState
+    data class Running(val progress: SyncProgress) : SyncUiState
+    data class Done(val cards: Int, val rulings: Int) : SyncUiState
+    data class Error(val message: String) : SyncUiState
+}
+
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class CardsViewModel(app: Application) : AndroidViewModel(app) {
     private val db = CardDb(app)
+    private val cardSync = CardSync(app)
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -38,11 +46,17 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
     private val _recent = MutableStateFlow<List<CardSummary>>(emptyList())
     val recent: StateFlow<List<CardSummary>> = _recent.asStateFlow()
 
+    private val _syncState = MutableStateFlow<SyncUiState>(SyncUiState.Idle)
+    val syncState: StateFlow<SyncUiState> = _syncState.asStateFlow()
+
+    private val _refresh = MutableStateFlow(0)
+
     val results: StateFlow<List<CardSummary>> =
         combine(
             _query.debounce(250).map { it.trim() }.distinctUntilChanged(),
             _ready,
-        ) { q, ready -> q to ready }
+            _refresh,
+        ) { q, ready, _ -> q to ready }
             .flatMapLatest { (q, ready) ->
                 if (!ready || q.isEmpty()) flowOf(emptyList())
                 else flow { emit(db.search(q)) }.flowOn(Dispatchers.IO)
@@ -56,9 +70,7 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun onQueryChange(text: String) {
-        _query.value = text
-    }
+    fun onQueryChange(text: String) { _query.value = text }
 
     fun openCard(oracleId: String) {
         viewModelScope.launch {
@@ -69,7 +81,22 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun closeDetail() {
-        _selected.value = null
+    fun closeDetail() { _selected.value = null }
+
+    fun startSync() {
+        if (_syncState.value is SyncUiState.Running) return
+        _syncState.value = SyncUiState.Running(SyncProgress.Connecting)
+        viewModelScope.launch(Dispatchers.IO) {
+            when (val result = cardSync.sync { p -> _syncState.value = SyncUiState.Running(p) }) {
+                is SyncResult.Success -> {
+                    db.reopen()
+                    _refresh.value += 1
+                    _syncState.value = SyncUiState.Done(result.cards, result.rulings)
+                }
+                is SyncResult.Error -> _syncState.value = SyncUiState.Error(result.message)
+            }
+        }
     }
+
+    fun dismissSync() { _syncState.value = SyncUiState.Idle }
 }
