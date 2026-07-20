@@ -6,22 +6,73 @@ import org.json.JSONArray
 import java.io.File
 
 /**
- * Read-only access to the bundled card database. Seeds [DB_NAME] into filesDir from assets on first
- * use, then opens it read-only. All methods block on I/O — call from Dispatchers.IO.
+ * Read-only access to the bundled/synced card database. Seeds [DB_NAME] into filesDir from assets on
+ * first use (atomically), validates it on open (re-seeding from the asset if missing/invalid), and can
+ * [reopen] after a sync swaps the file. All methods block on I/O — call from Dispatchers.IO.
  */
 class CardDb(private val appContext: Context) {
     private var db: SQLiteDatabase? = null
 
-    /** Seed filesDir/cards.db from assets if missing, then open read-only. Idempotent. */
     fun prepare() {
         if (db != null) return
-        val target = File(appContext.filesDir, DB_NAME)
-        if (!target.exists()) {
-            appContext.assets.open(DB_NAME).use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
-            }
+        ensureSeeded()
+        openInternal()
+    }
+
+    /** Close and reopen the DB file (used after a sync atomically replaces it). */
+    fun reopen() {
+        close()
+        ensureSeeded()
+        openInternal()
+    }
+
+    fun close() {
+        db?.close()
+        db = null
+    }
+
+    private fun dbFile() = File(appContext.filesDir, DB_NAME)
+
+    private fun ensureSeeded() {
+        if (!dbFile().exists()) seedFromAsset()
+    }
+
+    private fun seedFromAsset() {
+        val tmp = File(appContext.filesDir, "$DB_NAME.tmp")
+        appContext.assets.open(DB_NAME).use { input ->
+            tmp.outputStream().use { output -> input.copyTo(output) }
         }
+        val target = dbFile()
+        if (!tmp.renameTo(target)) {
+            tmp.copyTo(target, overwrite = true)
+            tmp.delete()
+        }
+    }
+
+    private fun openInternal() {
+        val target = dbFile()
+        val opened = try {
+            val conn = SQLiteDatabase.openDatabase(target.path, null, SQLiteDatabase.OPEN_READONLY)
+            if (isValid(conn)) conn else { conn.close(); null }
+        } catch (e: Exception) {
+            null
+        }
+        if (opened != null) {
+            db = opened
+            return
+        }
+        // Recovery: internal DB missing or invalid (e.g. a truncated seed copy) -> re-seed + open.
+        target.delete()
+        seedFromAsset()
         db = SQLiteDatabase.openDatabase(target.path, null, SQLiteDatabase.OPEN_READONLY)
+    }
+
+    private fun isValid(conn: SQLiteDatabase): Boolean = try {
+        conn.rawQuery("SELECT count(*) FROM Card", null).use { c ->
+            c.moveToFirst() && c.getLong(0) > 0
+        }
+    } catch (e: Exception) {
+        false
     }
 
     fun search(userText: String, limit: Int = 50): List<CardSummary> {
@@ -84,8 +135,6 @@ class CardDb(private val appContext: Context) {
     companion object {
         const val DB_NAME = "cards.db"
 
-        // ORDER BY floats name matches above oracle-text-only matches (FTS4 has no bm25).
-        // LIMIT is appended from a trusted Int; the ? params are match, raw, raw, raw.
         private const val SEARCH_SQL = """
             SELECT Card.oracleId, Card.name, Card.manaCost, Card.typeLine
             FROM CardFts JOIN Card ON Card.oracleId = CardFts.oracleId
