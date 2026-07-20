@@ -1,47 +1,24 @@
 package com.magictablet.screens
 
-import android.app.admin.DevicePolicyManager
-import android.content.Context
-import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.magictablet.game.GameViewModel
+import com.magictablet.game.ui.SeatLayout
 
 @Composable
-fun GameScreen() {
-    val context = LocalContext.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("Game — life totals (coming in M1)")
-        Button(
-            onClick = { relinquishDeviceOwner(context) },
-            modifier = Modifier.padding(top = 24.dp),
-        ) {
-            Text("Relinquish device owner")
-        }
-    }
-}
+fun GameScreen(viewModel: GameViewModel = viewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val recentDeltas by viewModel.recentDeltas.collectAsStateWithLifecycle()
 
-private fun relinquishDeviceOwner(context: Context) {
-    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    val pkg = context.packageName
-    val message = if (dpm.isDeviceOwnerApp(pkg)) {
-        @Suppress("DEPRECATION")
-        dpm.clearDeviceOwnerApp(pkg)
-        "Device owner relinquished"
-    } else {
-        "Not device owner"
-    }
-    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    SeatLayout(
+        players = state.players,
+        recentDeltas = recentDeltas,
+        onAdjustLife = viewModel::adjustLife,
+        onClearDelta = viewModel::clearRecentDelta,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
