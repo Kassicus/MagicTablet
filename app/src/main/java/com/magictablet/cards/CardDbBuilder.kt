@@ -21,7 +21,7 @@ object CardDbBuilder {
         try {
             // PRAGMA journal_mode returns a result row, so it must go through rawQuery — Android's
             // execSQL rejects any statement that returns data. synchronous returns nothing (execSQL ok).
-            db.rawQuery("PRAGMA journal_mode = OFF", null).close()
+            db.rawQuery("PRAGMA journal_mode = OFF", null).use { it.moveToFirst() }
             db.execSQL("PRAGMA synchronous = OFF")
             createSchema(db)
 
