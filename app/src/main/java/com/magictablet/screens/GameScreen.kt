@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.magictablet.game.GameViewModel
+import com.magictablet.game.ui.DiceOverlay
 import com.magictablet.game.ui.NewGameSheet
 import com.magictablet.game.ui.SeatLayout
 
@@ -30,6 +31,7 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
     var showNewGame by remember { mutableStateOf(false) }
+    var showDice by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         SeatLayout(
@@ -49,22 +51,11 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
         Box(Modifier.align(Alignment.Center)) {
             FilledTonalButton(onClick = { menuOpen = true }) { Text("⚙") }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text("Advance turn") },
-                    onClick = { menuOpen = false; viewModel.advanceTurn() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Random first player") },
-                    onClick = { menuOpen = false; viewModel.randomFirstPlayer() },
-                )
-                DropdownMenuItem(
-                    text = { Text("New game") },
-                    onClick = { menuOpen = false; showNewGame = true },
-                )
-                DropdownMenuItem(
-                    text = { Text("Relinquish device owner") },
-                    onClick = { menuOpen = false; relinquishDeviceOwner(context) },
-                )
+                DropdownMenuItem(text = { Text("Advance turn") }, onClick = { menuOpen = false; viewModel.advanceTurn() })
+                DropdownMenuItem(text = { Text("Random first player") }, onClick = { menuOpen = false; viewModel.randomFirstPlayer() })
+                DropdownMenuItem(text = { Text("Dice & coin") }, onClick = { menuOpen = false; showDice = true })
+                DropdownMenuItem(text = { Text("New game") }, onClick = { menuOpen = false; showNewGame = true })
+                DropdownMenuItem(text = { Text("Relinquish device owner") }, onClick = { menuOpen = false; relinquishDeviceOwner(context) })
             }
         }
     }
@@ -76,6 +67,10 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
             onStart = { count, life -> viewModel.newGame(count, life); showNewGame = false },
             onDismiss = { showNewGame = false },
         )
+    }
+
+    if (showDice) {
+        DiceOverlay(onDismiss = { showDice = false })
     }
 }
 
