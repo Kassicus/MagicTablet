@@ -19,6 +19,9 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
         recentDeltas = recentDeltas,
         onAdjustLife = viewModel::adjustLife,
         onClearDelta = viewModel::clearRecentDelta,
+        onAdjustPoison = viewModel::adjustPoison,
+        onAdjustCommanderDamage = viewModel::adjustCommanderDamage,
+        onAdjustCounter = viewModel::adjustCounter,
         modifier = Modifier.fillMaxSize(),
     )
 }

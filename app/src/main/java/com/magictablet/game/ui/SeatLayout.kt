@@ -17,34 +17,36 @@ fun SeatLayout(
     recentDeltas: Map<Int, RecentDelta>,
     onAdjustLife: (playerId: Int, delta: Int) -> Unit,
     onClearDelta: (playerId: Int) -> Unit,
+    onAdjustPoison: (playerId: Int, delta: Int) -> Unit,
+    onAdjustCommanderDamage: (playerId: Int, fromOpponentId: Int, delta: Int) -> Unit,
+    onAdjustCounter: (playerId: Int, counter: String, delta: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (topCount, _) = seatSplit(players.size)
     val topPlayers = players.take(topCount)
     val bottomPlayers = players.drop(topCount)
 
+    @Composable
+    fun panel(p: PlayerState, mod: Modifier) {
+        PlayerPanel(
+            player = p,
+            opponents = players.filter { it.id != p.id },
+            recentDelta = recentDeltas[p.id],
+            onAdjustLife = onAdjustLife,
+            onClearDelta = onClearDelta,
+            onAdjustPoison = onAdjustPoison,
+            onAdjustCommanderDamage = onAdjustCommanderDamage,
+            onAdjustCounter = onAdjustCounter,
+            modifier = mod,
+        )
+    }
+
     Column(modifier.fillMaxSize()) {
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            topPlayers.forEach { p ->
-                PlayerPanel(
-                    player = p,
-                    recentDelta = recentDeltas[p.id],
-                    onAdjustLife = onAdjustLife,
-                    onClearDelta = onClearDelta,
-                    modifier = Modifier.weight(1f).rotate(180f),
-                )
-            }
+            topPlayers.forEach { p -> panel(p, Modifier.weight(1f).rotate(180f)) }
         }
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            bottomPlayers.forEach { p ->
-                PlayerPanel(
-                    player = p,
-                    recentDelta = recentDeltas[p.id],
-                    onAdjustLife = onAdjustLife,
-                    onClearDelta = onClearDelta,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            bottomPlayers.forEach { p -> panel(p, Modifier.weight(1f)) }
         }
     }
 }
