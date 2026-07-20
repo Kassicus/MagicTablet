@@ -2,7 +2,9 @@
 
 Builds `app/src/main/assets/cards.db` - a trimmed, FTS5-indexed SQLite of Magic
 cards + rulings - from Scryfall bulk data, for offline card/ruling lookup in the app.
-The generated DB is gitignored; re-run this script to (re)build or refresh it.
+The generated DB is gitignored; re-run this script to rebuild it. To actually
+**refresh** from the latest Scryfall data, pass `--force` (a plain re-run reuses
+the cached download).
 
 ## Attribution
 

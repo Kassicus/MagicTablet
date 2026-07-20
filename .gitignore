@@ -12,6 +12,7 @@
 
 # M2 card-data pipeline
 /app/src/main/assets/cards.db
+/app/src/main/assets/cards.db.tmp
 tools/build_card_db/.cache/
 tools/build_card_db/.venv/
 tools/build_card_db/__pycache__/
