@@ -18,6 +18,8 @@ data class PlayerState(
 data class GameState(
     val startingLife: Int,
     val players: List<PlayerState>,
+    val activePlayerId: Int? = null,
+    val monarchPlayerId: Int? = null,
 )
 
 data class RecentDelta(val amount: Int, val token: Long)
@@ -71,3 +73,20 @@ fun GameState.adjustCounter(playerId: Int, counter: String, delta: Int): GameSta
         val next = ((it.counters[counter] ?: 0) + delta).coerceAtLeast(0)
         it.copy(counters = it.counters + (counter to next))
     }
+
+data class TimerState(
+    val running: Boolean = false,
+    val elapsedSeconds: Long = 0,
+)
+
+fun GameState.advanceTurn(): GameState {
+    if (players.isEmpty()) return this
+    val currentIndex = players.indexOfFirst { it.id == activePlayerId }
+    val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % players.size
+    return copy(activePlayerId = players[nextIndex].id)
+}
+
+fun GameState.setActivePlayer(id: Int): GameState = copy(activePlayerId = id)
+
+fun GameState.toggleMonarch(id: Int): GameState =
+    copy(monarchPlayerId = if (monarchPlayerId == id) null else id)
