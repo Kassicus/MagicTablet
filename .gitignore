@@ -9,3 +9,8 @@
 .externalNativeBuild
 .cxx
 .kotlin/
+
+# M2 card-data pipeline
+/app/src/main/assets/cards.db
+tools/build_card_db/.cache/
+tools/build_card_db/.venv/
