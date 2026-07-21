@@ -20,6 +20,9 @@ data class GameState(
     val players: List<PlayerState>,
     val activePlayerId: Int? = null,
     val monarchPlayerId: Int? = null,
+    val stack: List<StackItem> = emptyList(),
+    val priorityPlayerId: Int? = null,
+    val consecutivePasses: Int = 0,
 )
 
 data class RecentDelta(val amount: Int, val token: Long)

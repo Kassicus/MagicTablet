@@ -83,6 +83,12 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeDetail() { _selected.value = null }
 
+    suspend fun getDetail(oracleId: String): CardDetail? =
+        withContext(Dispatchers.IO) { db.card(oracleId) }
+
+    suspend fun searchCards(query: String): List<CardSummary> =
+        withContext(Dispatchers.IO) { db.search(query) }
+
     fun startSync() {
         if (_syncState.value is SyncUiState.Running) return
         _syncState.value = SyncUiState.Running(SyncProgress.Connecting)
