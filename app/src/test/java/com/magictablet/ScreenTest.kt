@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ScreenTest {
     @Test
-    fun screensAreGameCardsStackInOrder() {
-        assertEquals(listOf("Game", "Cards", "Stack"), Screen.entries.map { it.label })
+    fun screensAreGameCardsStackRulesInOrder() {
+        assertEquals(listOf("Game", "Cards", "Stack", "Rules"), Screen.entries.map { it.label })
     }
 }

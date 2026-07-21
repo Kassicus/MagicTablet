@@ -39,6 +39,7 @@ fun SeatLayout(
             isActive = p.id == activePlayerId,
             anyActive = activePlayerId != null,
             isMonarch = p.id == monarchPlayerId,
+            monarchExists = monarchPlayerId != null,
             onAdjustLife = onAdjustLife,
             onClearDelta = onClearDelta,
             onAdjustPoison = onAdjustPoison,

@@ -20,8 +20,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.magictablet.game.GameStore
 import com.magictablet.game.GameViewModel
 import com.magictablet.game.GameViewModelFactory
+import com.magictablet.rules.CrViewModel
 import com.magictablet.screens.CardsScreen
 import com.magictablet.screens.GameScreen
+import com.magictablet.screens.RulesScreen
 import com.magictablet.screens.StackScreen
 import java.io.File
 
@@ -31,6 +33,7 @@ fun App() {
     val gameViewModel: GameViewModel = viewModel(
         factory = remember { GameViewModelFactory(GameStore(File(context.filesDir, "game.json"))) },
     )
+    val crViewModel: CrViewModel = viewModel()
     var screen by remember { mutableStateOf(Screen.Game) }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -47,7 +50,11 @@ fun App() {
                 when (screen) {
                     Screen.Game -> GameScreen(viewModel = gameViewModel)
                     Screen.Cards -> CardsScreen()
-                    Screen.Stack -> StackScreen(gameViewModel = gameViewModel)
+                    Screen.Stack -> StackScreen(
+                        gameViewModel = gameViewModel,
+                        onOpenRule = { number -> crViewModel.openAt(number); screen = Screen.Rules },
+                    )
+                    Screen.Rules -> RulesScreen(viewModel = crViewModel)
                 }
             }
         }

@@ -1,14 +1,28 @@
 package com.magictablet.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -18,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,22 +44,16 @@ import com.magictablet.game.ui.SeatLayout
 import com.magictablet.game.ui.TimerChip
 import com.magictablet.kiosk.findActivity
 import com.magictablet.kiosk.releaseKiosk
-import com.magictablet.rules.CrReader
-import com.magictablet.rules.CrViewModel
 
 @Composable
-fun GameScreen(
-    viewModel: GameViewModel = viewModel(),
-    crViewModel: CrViewModel = viewModel(),
-) {
+fun GameScreen(viewModel: GameViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recentDeltas by viewModel.recentDeltas.collectAsStateWithLifecycle()
     val timer by viewModel.timer.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var menuOpen by remember { mutableStateOf(false) }
+    var panelOpen by remember { mutableStateOf(false) }
     var showNewGame by remember { mutableStateOf(false) }
     var showDice by remember { mutableStateOf(false) }
-    var showRules by remember { mutableStateOf(false) }
     var showExitKiosk by remember { mutableStateOf(false) }
 
     LaunchedEffectTick(timer.running, viewModel)
@@ -64,6 +73,7 @@ fun GameScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
+        // Center: timer chip (when active) + the Pass-turn button.
         Column(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -72,20 +82,58 @@ fun GameScreen(
             if (timer.running || timer.elapsedSeconds > 0) {
                 TimerChip(elapsedSeconds = timer.elapsedSeconds, running = timer.running)
             }
-            Box {
-                FilledTonalButton(onClick = { menuOpen = true }) { Text("⚙") }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Advance turn") }, onClick = { menuOpen = false; viewModel.advanceTurn() })
-                    DropdownMenuItem(text = { Text("Random first player") }, onClick = { menuOpen = false; viewModel.randomFirstPlayer() })
-                    DropdownMenuItem(text = { Text("Dice & coin") }, onClick = { menuOpen = false; showDice = true })
-                    DropdownMenuItem(
-                        text = { Text(if (timer.running) "Pause timer" else "Start timer") },
-                        onClick = { menuOpen = false; if (timer.running) viewModel.pauseTimer() else viewModel.startTimer() },
-                    )
-                    DropdownMenuItem(text = { Text("Reset timer") }, onClick = { menuOpen = false; viewModel.resetTimer() })
-                    DropdownMenuItem(text = { Text("Comprehensive Rules") }, onClick = { menuOpen = false; showRules = true })
-                    DropdownMenuItem(text = { Text("New game") }, onClick = { menuOpen = false; showNewGame = true })
-                    DropdownMenuItem(text = { Text("Exit kiosk mode") }, onClick = { menuOpen = false; showExitKiosk = true })
+            Button(onClick = { viewModel.advanceTurn() }) { Text("Pass turn") }
+        }
+
+        // Left-edge handle that opens the side panel.
+        Surface(
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 2.dp)
+                .size(width = 28.dp, height = 120.dp)
+                .clickable { panelOpen = true },
+            tonalElevation = 4.dp,
+            shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("☰") }
+        }
+
+        // Scrim (tap to close) behind the sliding panel.
+        if (panelOpen) {
+            Box(
+                Modifier.fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { panelOpen = false },
+            )
+        }
+
+        // Left slide-out panel.
+        AnimatedVisibility(
+            visible = panelOpen,
+            enter = slideInHorizontally { -it },
+            exit = slideOutHorizontally { -it },
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxHeight().width(280.dp),
+                tonalElevation = 3.dp,
+                shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+            ) {
+                Column(
+                    Modifier.fillMaxSize().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Table", style = MaterialTheme.typography.titleMedium)
+                    PanelButton("Random first player") { viewModel.randomFirstPlayer(); panelOpen = false }
+                    PanelButton("Dice & coin") { showDice = true; panelOpen = false }
+                    PanelButton(if (timer.running) "Pause timer" else "Start timer") {
+                        if (timer.running) viewModel.pauseTimer() else viewModel.startTimer()
+                        panelOpen = false
+                    }
+                    PanelButton("Reset timer") { viewModel.resetTimer(); panelOpen = false }
+                    PanelButton("New game") { showNewGame = true; panelOpen = false }
+                    Spacer(Modifier.weight(1f))
+                    PanelButton("Exit kiosk mode") { showExitKiosk = true; panelOpen = false }
                 }
             }
         }
@@ -101,9 +149,6 @@ fun GameScreen(
     }
     if (showDice) {
         DiceOverlay(onDismiss = { showDice = false })
-    }
-    if (showRules) {
-        CrReader(viewModel = crViewModel, onClose = { showRules = false })
     }
     if (showExitKiosk) {
         AlertDialog(
@@ -122,6 +167,11 @@ fun GameScreen(
             },
         )
     }
+}
+
+@Composable
+private fun PanelButton(label: String, onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(label) }
 }
 
 @Composable

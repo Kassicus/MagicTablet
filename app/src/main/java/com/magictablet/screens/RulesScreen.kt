@@ -1,5 +1,6 @@
-package com.magictablet.rules
+package com.magictablet.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,13 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,35 +26,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.magictablet.rules.CrSyncProgress
+import com.magictablet.rules.CrSyncUiState
+import com.magictablet.rules.CrView
+import com.magictablet.rules.CrViewModel
 
 @Composable
-fun CrReader(viewModel: CrViewModel, onClose: () -> Unit) {
+fun RulesScreen(viewModel: CrViewModel = viewModel()) {
     val hasRules by viewModel.hasRules.collectAsStateWithLifecycle()
     val view by viewModel.view.collectAsStateWithLifecycle()
     val url by viewModel.url.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val glossary by viewModel.glossary.collectAsStateWithLifecycle()
 
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize().padding(16.dp)) {
-            Column(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Comprehensive Rules", style = MaterialTheme.typography.titleLarge)
-                    TextButton(onClick = onClose) { Text("Close") }
-                }
-                Spacer(Modifier.height(8.dp))
-                when {
-                    syncState !is CrSyncUiState.Idle ->
-                        UpdatePanel(syncState, url, viewModel::setUrl, viewModel::startUpdate, viewModel::dismissSync)
-                    !hasRules ->
-                        LoadPrompt(url, viewModel::setUrl, viewModel::startUpdate)
-                    else ->
-                        BrowsePanel(view, glossary, viewModel::drillTo, viewModel::up, viewModel::jumpTo, viewModel::lookupGlossary, viewModel::clearGlossary, viewModel::startUpdate)
-                }
-            }
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Comprehensive Rules", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(8.dp))
+        when {
+            syncState !is CrSyncUiState.Idle ->
+                UpdatePanel(syncState, url, viewModel::setUrl, viewModel::startUpdate, viewModel::dismissSync)
+            !hasRules ->
+                LoadPrompt(url, viewModel::setUrl, viewModel::startUpdate)
+            else ->
+                BrowsePanel(view, glossary, viewModel::drillTo, viewModel::up, viewModel::jumpTo, viewModel::lookupGlossary, viewModel::clearGlossary, viewModel::startUpdate)
         }
     }
 }
@@ -132,10 +127,7 @@ private fun BrowsePanel(
                         Text(t, style = MaterialTheme.typography.titleSmall)
                         TextButton(onClick = onClearGlossary) { Text("Dismiss") }
                     }
-                    Text(
-                        def ?: "No glossary entry for '$t'",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text(def ?: "No glossary entry for '$t'", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
