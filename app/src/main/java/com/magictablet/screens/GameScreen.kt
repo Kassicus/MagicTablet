@@ -1,16 +1,16 @@
 package com.magictablet.screens
 
-import android.app.admin.DevicePolicyManager
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +27,8 @@ import com.magictablet.game.ui.DiceOverlay
 import com.magictablet.game.ui.NewGameSheet
 import com.magictablet.game.ui.SeatLayout
 import com.magictablet.game.ui.TimerChip
+import com.magictablet.kiosk.findActivity
+import com.magictablet.kiosk.releaseKiosk
 import com.magictablet.rules.CrReader
 import com.magictablet.rules.CrViewModel
 
@@ -43,6 +45,7 @@ fun GameScreen(
     var showNewGame by remember { mutableStateOf(false) }
     var showDice by remember { mutableStateOf(false) }
     var showRules by remember { mutableStateOf(false) }
+    var showExitKiosk by remember { mutableStateOf(false) }
 
     LaunchedEffectTick(timer.running, viewModel)
 
@@ -82,7 +85,7 @@ fun GameScreen(
                     DropdownMenuItem(text = { Text("Reset timer") }, onClick = { menuOpen = false; viewModel.resetTimer() })
                     DropdownMenuItem(text = { Text("Comprehensive Rules") }, onClick = { menuOpen = false; showRules = true })
                     DropdownMenuItem(text = { Text("New game") }, onClick = { menuOpen = false; showNewGame = true })
-                    DropdownMenuItem(text = { Text("Relinquish device owner") }, onClick = { menuOpen = false; relinquishDeviceOwner(context) })
+                    DropdownMenuItem(text = { Text("Exit kiosk mode") }, onClick = { menuOpen = false; showExitKiosk = true })
                 }
             }
         }
@@ -102,6 +105,23 @@ fun GameScreen(
     if (showRules) {
         CrReader(viewModel = crViewModel, onClose = { showRules = false })
     }
+    if (showExitKiosk) {
+        AlertDialog(
+            onDismissRequest = { showExitKiosk = false },
+            title = { Text("Exit kiosk mode?") },
+            text = { Text("This unlocks the tablet and removes MTG Table as device owner, so players can leave the app. Continue?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitKiosk = false
+                    val message = releaseKiosk(context.findActivity())
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }) { Text("Exit kiosk") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitKiosk = false }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -112,17 +132,4 @@ private fun LaunchedEffectTick(running: Boolean, viewModel: GameViewModel) {
             viewModel.tickTimer()
         }
     }
-}
-
-private fun relinquishDeviceOwner(context: Context) {
-    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    val pkg = context.packageName
-    val message = if (dpm.isDeviceOwnerApp(pkg)) {
-        @Suppress("DEPRECATION")
-        dpm.clearDeviceOwnerApp(pkg)
-        "Device owner relinquished"
-    } else {
-        "Not device owner"
-    }
-    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
 }
