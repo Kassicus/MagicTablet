@@ -60,4 +60,28 @@ class GameLogicTest {
         assertEquals("poison", initialGame(2, 40).adjustPoison(1, 10).players.first { it.id == 1 }.lossReason())
         assertFalse(initialGame(2, 40).players.first().isLost())
     }
+
+    @Test fun lossReason_zeroLifeTakesPrecedence() {
+        val p = PlayerState(id = 1, seat = 1, name = "P1", colorIndex = 0, life = 0, poison = 10, commanderDamage = mapOf(2 to 21))
+        assertTrue(p.isLost())
+        assertEquals("0 life", p.lossReason())
+    }
+
+    @Test fun lossReason_poisonBeforeCommander() {
+        val p = PlayerState(id = 1, seat = 1, name = "P1", colorIndex = 0, life = 20, poison = 10, commanderDamage = mapOf(2 to 21))
+        assertTrue(p.isLost())
+        assertEquals("poison", p.lossReason())
+    }
+
+    @Test fun lossReason_commanderDamage() {
+        val p = PlayerState(id = 1, seat = 1, name = "P1", colorIndex = 0, life = 20, poison = 0, commanderDamage = mapOf(2 to 21))
+        assertTrue(p.isLost())
+        assertEquals("cmdr", p.lossReason())
+    }
+
+    @Test fun notLost_withEmptyCommanderDamage() {
+        val p = PlayerState(id = 1, seat = 1, name = "P1", colorIndex = 0, life = 20)
+        assertFalse(p.isLost())
+        assertNull(p.lossReason())
+    }
 }
