@@ -42,6 +42,7 @@ fun PlayerPanel(
     isActive: Boolean,
     anyActive: Boolean,
     isMonarch: Boolean,
+    monarchExists: Boolean,
     onAdjustLife: (playerId: Int, delta: Int) -> Unit,
     onClearDelta: (playerId: Int) -> Unit,
     onAdjustPoison: (playerId: Int, delta: Int) -> Unit,
@@ -74,9 +75,11 @@ fun PlayerPanel(
             PlayerDrawer(
                 player = player,
                 opponents = opponents,
+                isMonarch = isMonarch,
                 onAdjustPoison = { onAdjustPoison(player.id, it) },
                 onAdjustCommanderDamage = { oppId, d -> onAdjustCommanderDamage(player.id, oppId, d) },
                 onAdjustCounter = { c, d -> onAdjustCounter(player.id, c, d) },
+                onBecomeMonarch = { onToggleMonarch(player.id) },
                 onCollapse = { expanded = false },
             )
         } else {
@@ -143,12 +146,14 @@ fun PlayerPanel(
 
             // Monarch marker (top-end). Clickable — safe from life-zone click-through (HoldRepeat uses
             // default requireUnconsumed = true). Bright when monarch, faint otherwise.
-            Box(
-                Modifier.align(Alignment.TopEnd).size(44.dp)
-                    .clickable { onToggleMonarch(player.id) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("👑", fontSize = 20.sp, modifier = Modifier.alpha(if (isMonarch) 1f else 0.3f))
+            if (monarchExists) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).size(44.dp)
+                        .clickable { onToggleMonarch(player.id) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("👑", fontSize = 20.sp, modifier = Modifier.alpha(if (isMonarch) 1f else 0.3f))
+                }
             }
 
             TextButton(onClick = { expanded = true }, modifier = Modifier.align(Alignment.BottomCenter)) {

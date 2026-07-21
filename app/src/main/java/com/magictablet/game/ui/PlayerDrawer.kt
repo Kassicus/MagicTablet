@@ -29,9 +29,11 @@ import com.magictablet.ui.theme.SeatColors
 fun PlayerDrawer(
     player: PlayerState,
     opponents: List<PlayerState>,
+    isMonarch: Boolean,
     onAdjustPoison: (delta: Int) -> Unit,
     onAdjustCommanderDamage: (fromOpponentId: Int, delta: Int) -> Unit,
     onAdjustCounter: (counter: String, delta: Int) -> Unit,
+    onBecomeMonarch: () -> Unit,
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -60,6 +62,9 @@ fun PlayerDrawer(
             CounterRow("Energy", player.counters["energy"] ?: 0) { onAdjustCounter("energy", it) }
             CounterRow("Exp", player.counters["experience"] ?: 0) { onAdjustCounter("experience", it) }
 
+            OutlinedButton(onClick = onBecomeMonarch, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(if (isMonarch) "Renounce monarch 👑" else "Become the monarch 👑")
+            }
             TextButton(onClick = onCollapse, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text("Collapse")
             }
