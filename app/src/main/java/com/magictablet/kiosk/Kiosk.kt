@@ -47,6 +47,21 @@ fun enterLockTaskIfNeeded(activity: Activity) {
     if (start) activity.startLockTask()
 }
 
+/** True when the app is currently in a Lock Task (kiosk) session. */
+fun inLockTask(activity: Activity): Boolean =
+    activityManager(activity).lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+
+/** Enter kiosk: ensure the package is whitelisted, then start Lock Task (guarded; no-op if not owner). */
+fun enterKiosk(activity: Activity) {
+    configureLockTask(activity)
+    enterLockTaskIfNeeded(activity)
+}
+
+/** Leave kiosk: stop Lock Task but KEEP device owner, so the app can re-enter later. */
+fun exitKiosk(activity: Activity) {
+    if (inLockTask(activity)) activity.stopLockTask()
+}
+
 /** Maintenance exit: leave Lock Task (if in it), then relinquish Device Owner. Returns a status message. */
 fun releaseKiosk(activity: Activity): String {
     if (activityManager(activity).lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) {
