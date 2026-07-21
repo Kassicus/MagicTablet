@@ -46,20 +46,17 @@ import com.magictablet.game.RESOLUTION_PROCEDURE
 import com.magictablet.game.StackItem
 import com.magictablet.game.StackKind
 import com.magictablet.game.stackHints
-import com.magictablet.rules.CrReader
-import com.magictablet.rules.CrViewModel
 import com.magictablet.ui.theme.SeatColors
 
 @Composable
 fun StackScreen(
     gameViewModel: GameViewModel = viewModel(),
     cardsViewModel: CardsViewModel = viewModel(),
-    crViewModel: CrViewModel = viewModel(),
+    onOpenRule: (String) -> Unit = {},
 ) {
     val state by gameViewModel.state.collectAsStateWithLifecycle()
     val lastResolved by gameViewModel.lastResolved.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
-    var showRules by remember { mutableStateOf(false) }
 
     val players = state.players
     fun playerOf(id: Int): PlayerState? = players.firstOrNull { it.id == id }
@@ -107,12 +104,8 @@ fun StackScreen(
 
     lastResolved?.let { resolved ->
         GuidancePanel(resolved, cardsViewModel,
-            onOpenRule = { number -> crViewModel.openAt(number); showRules = true },
+            onOpenRule = onOpenRule,
             onClose = { gameViewModel.clearLastResolved() })
-    }
-
-    if (showRules) {
-        CrReader(viewModel = crViewModel, onClose = { showRules = false })
     }
 }
 
