@@ -3,6 +3,7 @@ package com.magictablet.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 
 @OptIn(FlowPreview::class)
 class GameViewModel(private val persistence: GamePersistence = NoPersistence) : ViewModel() {
@@ -40,7 +42,12 @@ class GameViewModel(private val persistence: GamePersistence = NoPersistence) : 
         if (persistence !== NoPersistence) {
             _state.drop(1)
                 .debounce(AUTOSAVE_DEBOUNCE_MS)
-                .onEach { persistence.save(GameSnapshot(_state.value, nextStackId)) }
+                .onEach { snapshotState ->
+                    // Capture id counter on the collector thread (same thread as the intents that
+                    // mutate it), then do the JSON encode + file write off the main thread.
+                    val snapshot = GameSnapshot(snapshotState, nextStackId)
+                    withContext(Dispatchers.IO) { persistence.save(snapshot) }
+                }
                 .launchIn(viewModelScope)
         }
     }
