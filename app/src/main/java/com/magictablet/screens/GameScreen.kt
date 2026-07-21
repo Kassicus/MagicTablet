@@ -42,7 +42,11 @@ import com.magictablet.game.ui.DiceOverlay
 import com.magictablet.game.ui.NewGameSheet
 import com.magictablet.game.ui.SeatLayout
 import com.magictablet.game.ui.TimerChip
+import com.magictablet.kiosk.enterKiosk
+import com.magictablet.kiosk.exitKiosk
 import com.magictablet.kiosk.findActivity
+import com.magictablet.kiosk.inLockTask
+import com.magictablet.kiosk.isDeviceOwner
 import com.magictablet.kiosk.releaseKiosk
 
 @Composable
@@ -54,7 +58,8 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
     var panelOpen by remember { mutableStateOf(false) }
     var showNewGame by remember { mutableStateOf(false) }
     var showDice by remember { mutableStateOf(false) }
-    var showExitKiosk by remember { mutableStateOf(false) }
+    var showRelinquish by remember { mutableStateOf(false) }
+    var showProvisionInfo by remember { mutableStateOf(false) }
 
     LaunchedEffectTick(timer.running, viewModel)
 
@@ -133,7 +138,25 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
                     PanelButton("Reset timer") { viewModel.resetTimer(); panelOpen = false }
                     PanelButton("New game") { showNewGame = true; panelOpen = false }
                     Spacer(Modifier.weight(1f))
-                    PanelButton("Exit kiosk mode") { showExitKiosk = true; panelOpen = false }
+                    val activity = context.findActivity()
+                    if (inLockTask(activity)) {
+                        PanelButton("Exit kiosk mode") {
+                            exitKiosk(activity)
+                            Toast.makeText(context, "Left kiosk — still device owner", Toast.LENGTH_LONG).show()
+                            panelOpen = false
+                        }
+                    } else {
+                        PanelButton("Enter kiosk mode") {
+                            if (isDeviceOwner(context)) {
+                                enterKiosk(activity)
+                                Toast.makeText(context, "Kiosk mode on", Toast.LENGTH_LONG).show()
+                            } else {
+                                showProvisionInfo = true
+                            }
+                            panelOpen = false
+                        }
+                    }
+                    PanelButton("Relinquish device owner") { showRelinquish = true; panelOpen = false }
                 }
             }
         }
@@ -150,20 +173,36 @@ fun GameScreen(viewModel: GameViewModel = viewModel()) {
     if (showDice) {
         DiceOverlay(onDismiss = { showDice = false })
     }
-    if (showExitKiosk) {
+    if (showRelinquish) {
         AlertDialog(
-            onDismissRequest = { showExitKiosk = false },
-            title = { Text("Exit kiosk mode?") },
+            onDismissRequest = { showRelinquish = false },
+            title = { Text("Relinquish device owner?") },
             text = { Text("This unlocks the tablet and removes MTG Table as device owner, so players can leave the app. Continue?") },
             confirmButton = {
                 TextButton(onClick = {
-                    showExitKiosk = false
+                    showRelinquish = false
                     val message = releaseKiosk(context.findActivity())
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                }) { Text("Exit kiosk") }
+                }) { Text("Relinquish") }
             },
             dismissButton = {
-                TextButton(onClick = { showExitKiosk = false }) { Text("Cancel") }
+                TextButton(onClick = { showRelinquish = false }) { Text("Cancel") }
+            },
+        )
+    }
+    if (showProvisionInfo) {
+        AlertDialog(
+            onDismissRequest = { showProvisionInfo = false },
+            title = { Text("Enter kiosk mode") },
+            text = {
+                Text(
+                    "MTG Table isn't the device owner yet, so it can't lock itself. On an account-free tablet, run " +
+                        "this once over USB:\n\nadb shell dpm set-device-owner com.magictablet/.AdminReceiver\n\n" +
+                        "then reopen the app and use Enter kiosk mode.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showProvisionInfo = false }) { Text("OK") }
             },
         )
     }
