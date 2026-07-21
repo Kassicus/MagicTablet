@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import com.magictablet.game.PlayerState
@@ -36,6 +37,7 @@ fun SeatLayout(
             opponents = players.filter { it.id != p.id },
             recentDelta = recentDeltas[p.id],
             isActive = p.id == activePlayerId,
+            anyActive = activePlayerId != null,
             isMonarch = p.id == monarchPlayerId,
             onAdjustLife = onAdjustLife,
             onClearDelta = onClearDelta,
@@ -49,10 +51,10 @@ fun SeatLayout(
 
     Column(modifier.fillMaxSize()) {
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            topPlayers.forEach { p -> panel(p, Modifier.weight(1f).rotate(180f)) }
+            topPlayers.forEach { p -> key(p.id) { panel(p, Modifier.weight(1f).rotate(180f)) } }
         }
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            bottomPlayers.forEach { p -> panel(p, Modifier.weight(1f)) }
+            bottomPlayers.forEach { p -> key(p.id) { panel(p, Modifier.weight(1f)) } }
         }
     }
 }

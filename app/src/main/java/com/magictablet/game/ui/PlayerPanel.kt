@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ fun PlayerPanel(
     opponents: List<PlayerState>,
     recentDelta: RecentDelta?,
     isActive: Boolean,
+    anyActive: Boolean,
     isMonarch: Boolean,
     onAdjustLife: (playerId: Int, delta: Int) -> Unit,
     onClearDelta: (playerId: Int) -> Unit,
@@ -64,7 +66,7 @@ fun PlayerPanel(
             .padding(4.dp)
             .border(
                 width = if (isActive) 4.dp else 2.dp,
-                color = if (isActive) accent else accent.copy(alpha = 0.5f),
+                color = if (isActive || !anyActive) accent else accent.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp),
             ),
     ) {
@@ -83,10 +85,16 @@ fun PlayerPanel(
                 Box(Modifier.weight(1f).fillMaxHeight().holdRepeatClick { onAdjustLife(player.id, 1) })
             }
 
+            val lifeText = player.life.toString()
+            val lifeFontSize = when {
+                lifeText.length >= 4 -> 44.sp
+                lifeText.length == 3 -> 56.sp
+                else -> 72.sp
+            }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    text = player.life.toString(),
-                    fontSize = 72.sp,
+                    text = lifeText,
+                    fontSize = lifeFontSize,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.alpha(if (lost) 0.4f else 1f),
@@ -136,8 +144,9 @@ fun PlayerPanel(
             // Monarch marker (top-end). Clickable — safe from life-zone click-through (HoldRepeat uses
             // default requireUnconsumed = true). Bright when monarch, faint otherwise.
             Box(
-                Modifier.align(Alignment.TopEnd).padding(6.dp)
+                Modifier.align(Alignment.TopEnd).size(44.dp)
                     .clickable { onToggleMonarch(player.id) },
+                contentAlignment = Alignment.Center,
             ) {
                 Text("👑", fontSize = 20.sp, modifier = Modifier.alpha(if (isMonarch) 1f else 0.3f))
             }
