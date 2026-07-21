@@ -25,4 +25,9 @@ class CardQueryTest {
         assertEquals("", buildMatchQuery("   "))
         assertEquals("", buildMatchQuery(",,, --- "))
     }
+
+    @Test fun foldsDiacritics() {
+        assertEquals("dul*", buildMatchQuery("Dûl"))
+        assertEquals("jotun* grunt*", buildMatchQuery("Jötun Grunt"))
+    }
 }

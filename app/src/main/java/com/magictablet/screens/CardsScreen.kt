@@ -43,6 +43,7 @@ fun CardsScreen(viewModel: CardsViewModel = viewModel()) {
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val ready by viewModel.ready.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val searching by viewModel.searching.collectAsStateWithLifecycle()
 
     BackHandler(enabled = selected != null) { viewModel.closeDetail() }
 
@@ -73,6 +74,7 @@ fun CardsScreen(viewModel: CardsViewModel = viewModel()) {
             detail != null -> CardDetailView(detail, onBack = viewModel::closeDetail)
             !ready -> Hint("Preparing card database…")
             query.isBlank() -> RecentList(recent, viewModel::openCard)
+            searching && results.isEmpty() -> Hint("Searching…")
             else -> ResultsList(results, viewModel::openCard)
         }
     }
