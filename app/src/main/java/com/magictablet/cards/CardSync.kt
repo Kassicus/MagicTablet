@@ -97,8 +97,22 @@ class CardSync(private val appContext: Context) {
         return conn
     }
 
+    /** Throw with the status + a snippet of the error body on any non-2xx response. */
+    private fun HttpURLConnection.checkOk() {
+        val code = responseCode
+        if (code / 100 != 2) {
+            val body = try {
+                errorStream?.use { it.readBytes().toString(Charsets.UTF_8).take(200) }
+            } catch (e: Exception) {
+                null
+            }
+            throw java.io.IOException("HTTP $code${if (body.isNullOrBlank()) "" else ": $body"}")
+        }
+    }
+
     private fun fetchBulkUrls(): Pair<String, String> {
         val conn = open(BULK_DATA_URL)
+        conn.checkOk()
         val json = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
         val data = JSONObject(json).getJSONArray("data")
         var oracle: String? = null
@@ -119,6 +133,7 @@ class CardSync(private val appContext: Context) {
     private fun download(urlStr: String, dest: File, onBytes: (Long, Long) -> Unit): Boolean {
         val conn = open(urlStr)
         conn.setRequestProperty("Accept-Encoding", "gzip")
+        conn.checkOk()
         val total = conn.contentLengthLong
         val gz = conn.getHeaderField("Content-Encoding")?.contains("gzip", ignoreCase = true) == true
         conn.inputStream.use { input ->
@@ -138,12 +153,14 @@ class CardSync(private val appContext: Context) {
     }
 
     private fun streamArray(file: File, gz: Boolean, onElement: (JsonReader) -> Unit) {
-        val raw = BufferedInputStream(FileInputStream(file))
-        val stream = if (gz) GZIPInputStream(raw) else raw
-        JsonReader(InputStreamReader(stream, Charsets.UTF_8)).use { r ->
-            r.beginArray()
-            while (r.hasNext()) onElement(r)
-            r.endArray()
+        FileInputStream(file).use { fis ->
+            val buffered = BufferedInputStream(fis)
+            val stream = if (gz) GZIPInputStream(buffered) else buffered
+            JsonReader(InputStreamReader(stream, Charsets.UTF_8)).use { r ->
+                r.beginArray()
+                while (r.hasNext()) onElement(r)
+                r.endArray()
+            }
         }
     }
 
