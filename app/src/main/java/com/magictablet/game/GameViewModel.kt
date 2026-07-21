@@ -16,10 +16,15 @@ class GameViewModel : ViewModel() {
     private val _timer = MutableStateFlow(TimerState())
     val timer: StateFlow<TimerState> = _timer.asStateFlow()
 
+    private val _lastResolved = MutableStateFlow<StackItem?>(null)
+    val lastResolved: StateFlow<StackItem?> = _lastResolved.asStateFlow()
+    private var nextStackId = 1L
+
     fun newGame(playerCount: Int, startingLife: Int) {
         _state.value = initialGame(playerCount, startingLife)
         _recentDeltas.value = emptyMap()
         _timer.value = TimerState()
+        _lastResolved.value = null
     }
 
     fun adjustLife(playerId: Int, delta: Int) {
@@ -60,6 +65,25 @@ class GameViewModel : ViewModel() {
 
     fun adjustCounter(playerId: Int, counter: String, delta: Int) =
         _state.update { it.adjustCounter(playerId, counter, delta) }
+
+    fun addToStack(controllerId: Int, kind: StackKind, cardOracleId: String?, label: String, targets: String) {
+        _state.update { it.pushStackItem(StackItem(nextStackId++, controllerId, cardOracleId, kind, label, targets)) }
+    }
+
+    fun resolveTop() = resolvingUpdate { it.resolveTop() }
+    fun passPriority() = resolvingUpdate { it.passPriority() }
+    fun removeStackItem(id: Long) = _state.update { it.removeStackItem(id) }
+    fun clearStack() { _state.update { it.clearStack() }; _lastResolved.value = null }
+    fun clearLastResolved() { _lastResolved.value = null }
+
+    /** Apply [op]; if it shrank the stack (a resolution), capture the removed top into lastResolved. */
+    private fun resolvingUpdate(op: (GameState) -> GameState) {
+        val before = _state.value
+        val top = before.stack.lastOrNull()
+        val after = op(before)
+        _state.value = after
+        if (after.stack.size < before.stack.size && top != null) _lastResolved.value = top
+    }
 
     companion object {
         const val DEFAULT_PLAYER_COUNT = 4

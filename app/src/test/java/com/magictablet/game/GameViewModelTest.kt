@@ -79,4 +79,30 @@ class GameViewModelTest {
         assertNull(vm.state.value.monarchPlayerId)
         assertEquals(TimerState(), vm.timer.value)
     }
+
+    @Test fun addToStack_thenResolveTop_setsLastResolved() {
+        val vm = GameViewModel()
+        vm.addToStack(1, StackKind.Spell, null, "Bolt", "")
+        assertEquals(1, vm.state.value.stack.size)
+        vm.resolveTop()
+        assertEquals(0, vm.state.value.stack.size)
+        assertEquals("Bolt", vm.lastResolved.value?.label)
+    }
+
+    @Test fun passAround_resolvesTop_andSetsLastResolved() {
+        val vm = GameViewModel()  // default 4 players
+        vm.addToStack(1, StackKind.Triggered, null, "Trigger", "")
+        repeat(4) { vm.passPriority() }
+        assertEquals(0, vm.state.value.stack.size)
+        assertEquals("Trigger", vm.lastResolved.value?.label)
+    }
+
+    @Test fun newGame_clearsStackAndLastResolved() {
+        val vm = GameViewModel()
+        vm.addToStack(1, StackKind.Spell, null, "Bolt", "")
+        vm.resolveTop()
+        vm.newGame(4, 40)
+        assertEquals(emptyList<StackItem>(), vm.state.value.stack)
+        assertNull(vm.lastResolved.value)
+    }
 }
