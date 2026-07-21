@@ -235,7 +235,7 @@ with:
 class GameViewModel(private val persistence: GamePersistence = NoPersistence) : ViewModel() {
 ```
 
-Add an `init` block that restores + autosaves — insert it immediately after the `private var nextStackId = 1L` line:
+Add an `init` block that restores + autosaves — insert it immediately after the `private var nextStackId = 1L` line. The autosave collector is guarded by `persistence !== NoPersistence`: it's pointless to run an autosave that no-ops, AND it keeps `GameViewModel()` (→ `NoPersistence`) constructible in plain-JVM unit tests, where `viewModelScope`'s `Dispatchers.Main` isn't initialized (an unguarded `launchIn(viewModelScope)` throws from the constructor and fails `GameViewModelTest`):
 ```kotlin
 
     init {
@@ -243,10 +243,12 @@ Add an `init` block that restores + autosaves — insert it immediately after th
             _state.value = snapshot.state
             nextStackId = snapshot.nextStackId
         }
-        _state.drop(1)
-            .debounce(AUTOSAVE_DEBOUNCE_MS)
-            .onEach { persistence.save(GameSnapshot(_state.value, nextStackId)) }
-            .launchIn(viewModelScope)
+        if (persistence !== NoPersistence) {
+            _state.drop(1)
+                .debounce(AUTOSAVE_DEBOUNCE_MS)
+                .onEach { persistence.save(GameSnapshot(_state.value, nextStackId)) }
+                .launchIn(viewModelScope)
+        }
     }
 ```
 
