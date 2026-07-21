@@ -105,4 +105,13 @@ class GameViewModelTest {
         assertEquals(emptyList<StackItem>(), vm.state.value.stack)
         assertNull(vm.lastResolved.value)
     }
+
+    @Test fun adjustLife_recentDeltaTokenIsMonotonic() {
+        val vm = GameViewModel()
+        vm.adjustLife(1, -1)
+        val first = vm.recentDeltas.value[1]?.token ?: 0L
+        vm.adjustLife(1, -1)
+        val second = vm.recentDeltas.value[1]?.token ?: 0L
+        assertTrue(second > first)
+    }
 }

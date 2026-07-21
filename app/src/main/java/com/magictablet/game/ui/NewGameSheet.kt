@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.magictablet.game.GAME_FORMATS
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -47,6 +48,17 @@ fun NewGameSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("New game")
+
+            Text("Format")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GAME_FORMATS.forEach { format ->
+                    FilterChip(
+                        selected = count == format.playerCount && lifeText == format.startingLife.toString(),
+                        onClick = { count = format.playerCount; lifeText = format.startingLife.toString() },
+                        label = { Text(format.name) },
+                    )
+                }
+            }
 
             Text("Players")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

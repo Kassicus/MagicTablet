@@ -11,22 +11,24 @@ import java.io.File
  * [reopen] after a sync swaps the file. All methods block on I/O — call from Dispatchers.IO.
  */
 class CardDb(private val appContext: Context) {
+    private val lock = Any()
     private var db: SQLiteDatabase? = null
 
-    fun prepare() {
-        if (db != null) return
+    fun prepare() = synchronized(lock) {
+        if (db != null) return@synchronized
         ensureSeeded()
         openInternal()
     }
 
     /** Close and reopen the DB file (used after a sync atomically replaces it). */
-    fun reopen() {
-        close()
+    fun reopen() = synchronized(lock) {
+        db?.close()
+        db = null
         ensureSeeded()
         openInternal()
     }
 
-    fun close() {
+    fun close() = synchronized(lock) {
         db?.close()
         db = null
     }
@@ -75,10 +77,10 @@ class CardDb(private val appContext: Context) {
         false
     }
 
-    fun search(userText: String, limit: Int = 50): List<CardSummary> {
+    fun search(userText: String, limit: Int = 50): List<CardSummary> = synchronized(lock) {
         val match = buildMatchQuery(userText)
-        if (match.isEmpty()) return emptyList()
-        val conn = db ?: return emptyList()
+        if (match.isEmpty()) return@synchronized emptyList()
+        val conn = db ?: return@synchronized emptyList()
         val raw = userText.trim().lowercase()
         val out = ArrayList<CardSummary>()
         conn.rawQuery("$SEARCH_SQL LIMIT $limit", arrayOf(match, raw, raw, raw)).use { c ->
@@ -93,11 +95,11 @@ class CardDb(private val appContext: Context) {
                 )
             }
         }
-        return out
+        return@synchronized out
     }
 
-    fun card(oracleId: String): CardDetail? {
-        val conn = db ?: return null
+    fun card(oracleId: String): CardDetail? = synchronized(lock) {
+        val conn = db ?: return@synchronized null
         var base: CardDetail? = null
         conn.rawQuery(CARD_SQL, arrayOf(oracleId)).use { c ->
             if (c.moveToNext()) {
@@ -112,14 +114,14 @@ class CardDb(private val appContext: Context) {
                 )
             }
         }
-        val detail = base ?: return null
+        val detail = base ?: return@synchronized null
         val rulings = ArrayList<RulingItem>()
         conn.rawQuery(RULINGS_SQL, arrayOf(oracleId)).use { c ->
             while (c.moveToNext()) {
                 rulings.add(RulingItem(c.getString(0) ?: "", c.getString(1) ?: ""))
             }
         }
-        return detail.copy(rulings = rulings)
+        return@synchronized detail.copy(rulings = rulings)
     }
 
     private fun parseKeywords(json: String?): List<String> {

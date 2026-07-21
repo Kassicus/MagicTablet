@@ -1,12 +1,22 @@
 package com.magictablet.game
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 
-class GameViewModel : ViewModel() {
+@OptIn(FlowPreview::class)
+class GameViewModel(private val persistence: GamePersistence = NoPersistence) : ViewModel() {
     private val _state = MutableStateFlow(initialGame(DEFAULT_PLAYER_COUNT, DEFAULT_STARTING_LIFE))
     val state: StateFlow<GameState> = _state.asStateFlow()
 
@@ -19,6 +29,28 @@ class GameViewModel : ViewModel() {
     private val _lastResolved = MutableStateFlow<StackItem?>(null)
     val lastResolved: StateFlow<StackItem?> = _lastResolved.asStateFlow()
     private var nextStackId = 1L
+
+    init {
+        persistence.load()?.let { snapshot ->
+            _state.value = snapshot.state
+            nextStackId = snapshot.nextStackId
+        }
+        // Only launch the autosave collector when there is real persistence. The default
+        // NoPersistence path is a no-op to save anyway, and skipping the launch keeps
+        // GameViewModel() constructible in plain-JVM unit tests where viewModelScope's Main
+        // dispatcher isn't initialized (launchIn would otherwise throw from the constructor).
+        if (persistence !== NoPersistence) {
+            _state.drop(1)
+                .debounce(AUTOSAVE_DEBOUNCE_MS)
+                .onEach { snapshotState ->
+                    // Capture id counter on the collector thread (same thread as the intents that
+                    // mutate it), then do the JSON encode + file write off the main thread.
+                    val snapshot = GameSnapshot(snapshotState, nextStackId)
+                    withContext(Dispatchers.IO) { persistence.save(snapshot) }
+                }
+                .launchIn(viewModelScope)
+        }
+    }
 
     fun newGame(playerCount: Int, startingLife: Int) {
         _state.value = initialGame(playerCount, startingLife)
@@ -88,5 +120,11 @@ class GameViewModel : ViewModel() {
     companion object {
         const val DEFAULT_PLAYER_COUNT = 4
         const val DEFAULT_STARTING_LIFE = 40
+        const val AUTOSAVE_DEBOUNCE_MS = 500L
     }
+}
+
+class GameViewModelFactory(private val persistence: GamePersistence) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = GameViewModel(persistence) as T
 }

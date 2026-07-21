@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +47,9 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
     private val _recent = MutableStateFlow<List<CardSummary>>(emptyList())
     val recent: StateFlow<List<CardSummary>> = _recent.asStateFlow()
 
+    private val _searching = MutableStateFlow(false)
+    val searching: StateFlow<Boolean> = _searching.asStateFlow()
+
     private val _syncState = MutableStateFlow<SyncUiState>(SyncUiState.Idle)
     val syncState: StateFlow<SyncUiState> = _syncState.asStateFlow()
 
@@ -61,6 +65,7 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
                 if (!ready || q.isEmpty()) flowOf(emptyList())
                 else flow { emit(db.search(q)) }.flowOn(Dispatchers.IO)
             }
+            .onEach { _searching.value = false }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -70,7 +75,10 @@ class CardsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun onQueryChange(text: String) { _query.value = text }
+    fun onQueryChange(text: String) {
+        _searching.value = text.isNotBlank()
+        _query.value = text
+    }
 
     fun openCard(oracleId: String) {
         viewModelScope.launch {
