@@ -1,7 +1,11 @@
 package com.magictablet.game
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class StackKind { Spell, Activated, Triggered }
 
+@Serializable
 data class StackItem(
     val id: Long,
     val controllerId: Int,

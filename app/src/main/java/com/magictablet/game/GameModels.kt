@@ -1,9 +1,12 @@
 package com.magictablet.game
 
+import kotlinx.serialization.Serializable
+
 const val POISON_LOSS = 10
 const val COMMANDER_DAMAGE_LOSS = 21
 const val SEAT_COLOR_COUNT = 6
 
+@Serializable
 data class PlayerState(
     val id: Int,
     val seat: Int,
@@ -15,6 +18,7 @@ data class PlayerState(
     val counters: Map<String, Int> = mapOf("energy" to 0, "experience" to 0),
 )
 
+@Serializable
 data class GameState(
     val startingLife: Int,
     val players: List<PlayerState>,
